@@ -50,53 +50,75 @@ export async function register (req,res) {
 
 
 export async function login(req, res) {
+
+    console.log("===== LOGIN REQUEST =====");
+    console.log("Body:", req.body);
+
     const { email, password } = req.body;
 
-    const user = await userModel.findOne({ email })
+    const user = await userModel.findOne({ email });
+
+    console.log("User Found:", !!user);
 
     if (!user) {
+        console.log("❌ User not found");
         return res.status(400).json({
             message: "Invalid email or password",
             success: false,
             err: "User not found"
-        })
+        });
     }
 
     const isPasswordMatch = await user.comparePassword(password);
 
+    console.log("Password Match:", isPasswordMatch);
+    console.log("Verified:", user.verified);
+
     if (!isPasswordMatch) {
+        console.log("❌ Password incorrect");
         return res.status(400).json({
             message: "Invalid email or password",
             success: false,
             err: "Incorrect password"
-        })
+        });
     }
 
     if (!user.verified) {
+        console.log("❌ Email not verified");
         return res.status(400).json({
             message: "Please verify your email before logging in",
             success: false,
             err: "Email not verified"
-        })
+        });
     }
 
-    const token = jwt.sign({
-        id: user._id,
-        username: user.username,
-    }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    console.log("✅ Login Success");
 
-    res.cookie("token", token)
+    const token = jwt.sign(
+        {
+            id: user._id,
+            username: user.username,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+    );
 
-    res.status(200).json({
+    res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "None",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
         message: "Login successful",
         success: true,
         user: {
             id: user._id,
             username: user.username,
-            email: user.email
-        }
-    })
-
+            email: user.email,
+        },
+    });
 }
 
 
