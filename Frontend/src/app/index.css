@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+.messages::-webkit-scrollbar {
+    display: none;
+}
+
+body{
+    overflow: hidden;
+}
