@@ -179,23 +179,29 @@ export async function login(req, res) {
 //  * @access Private
 
 export async function getMe(req, res) {
+    console.log("========== GET ME ==========");
+    console.log("Decoded Token:", req.user);
+
     const userId = req.user.id;
+    console.log("User ID:", userId);
 
     const user = await userModel.findById(userId).select("-password");
+
+    console.log("User From DB:", user);
 
     if (!user) {
         return res.status(404).json({
             message: "User not found",
             success: false,
             err: "User not found"
-        })
+        });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
         message: "User details fetched successfully",
         success: true,
         user
-    })
+    });
 }
 
 
