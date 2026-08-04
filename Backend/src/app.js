@@ -10,12 +10,11 @@ const app = express();
 // CORS Middleware (Routes se pehle)
 app.use(
   cors({
-    origin:[ "http://localhost:5173",
-     "https://your-frontend.onrender.com",
+    origin: [
+      "http://localhost:5173",
+      "https://YOUR-ACTUAL-FRONTEND.onrender.com",
     ],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
