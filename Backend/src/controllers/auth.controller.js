@@ -101,54 +101,65 @@ export async function register(req, res) {
 
 
 export async function login(req, res) {
-
     console.log("===== LOGIN REQUEST =====");
     console.log("Body:", req.body);
 
-    const { email, password } = req.body;
+    const email = req.body.email.trim().toLowerCase();
+    const password = req.body.password;
 
-    const user = await userModel.findOne({ email });
+    console.log("Searching Email:", email);
 
-    console.log("User Found:", !!user);
+    const allUsers = await userModel.find();
 
-    if (!user) {
+    console.log("All Users Count:", allUsers.length);
+
+    allUsers.forEach((u) => {
+        console.log({
+            id: u._id.toString(),
+            email: u.email,
+            username: u.username,
+            verified: u.verified,
+        });
+    });
+
+    const user = await userModel.find({ email });
+
+    console.log("Matched User:", user);
+
+    if (user.length === 0) {
         console.log("❌ User not found");
         return res.status(400).json({
             message: "Invalid email or password",
             success: false,
-            err: "User not found"
+            err: "User not found",
         });
     }
 
-    const isPasswordMatch = await user.comparePassword(password);
+    const currentUser = user[0];
+
+    const isPasswordMatch = await currentUser.comparePassword(password);
 
     console.log("Password Match:", isPasswordMatch);
-    console.log("Verified:", user.verified);
+    console.log("Verified:", currentUser.verified);
 
     if (!isPasswordMatch) {
-        console.log("❌ Password incorrect");
         return res.status(400).json({
             message: "Invalid email or password",
             success: false,
-            err: "Incorrect password"
         });
     }
 
-    if (!user.verified) {
-        console.log("❌ Email not verified");
+    if (!currentUser.verified) {
         return res.status(400).json({
             message: "Please verify your email before logging in",
             success: false,
-            err: "Email not verified"
         });
     }
 
-    console.log("✅ Login Success");
-
     const token = jwt.sign(
         {
-            id: user._id,
-            username: user.username,
+            id: currentUser._id,
+            username: currentUser.username,
         },
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
@@ -165,9 +176,9 @@ export async function login(req, res) {
         message: "Login successful",
         success: true,
         user: {
-            id: user._id,
-            username: user.username,
-            email: user.email,
+            id: currentUser._id,
+            username: currentUser.username,
+            email: currentUser.email,
         },
     });
 }
