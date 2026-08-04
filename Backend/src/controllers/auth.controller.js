@@ -107,26 +107,15 @@ export async function login(req, res) {
     const email = req.body.email.trim().toLowerCase();
     const password = req.body.password;
 
-    console.log("Searching Email:", email);
+    console.log("Searching Email:", JSON.stringify(email));
 
-    const allUsers = await userModel.find();
-
-    console.log("All Users Count:", allUsers.length);
-
-    allUsers.forEach((u) => {
-        console.log({
-            id: u._id.toString(),
-            email: u.email,
-            username: u.username,
-            verified: u.verified,
-        });
+    const user = await userModel.findOne({
+        email: email,
     });
 
-    const user = await userModel.find({ email });
+    console.log("Found User:", user);
 
-    console.log("Matched User:", user);
-
-    if (user.length === 0) {
+    if (!user) {
         console.log("❌ User not found");
         return res.status(400).json({
             message: "Invalid email or password",
@@ -135,12 +124,10 @@ export async function login(req, res) {
         });
     }
 
-    const currentUser = user[0];
-
-    const isPasswordMatch = await currentUser.comparePassword(password);
+    const isPasswordMatch = await user.comparePassword(password);
 
     console.log("Password Match:", isPasswordMatch);
-    console.log("Verified:", currentUser.verified);
+    console.log("Verified:", user.verified);
 
     if (!isPasswordMatch) {
         return res.status(400).json({
@@ -149,7 +136,7 @@ export async function login(req, res) {
         });
     }
 
-    if (!currentUser.verified) {
+    if (!user.verified) {
         return res.status(400).json({
             message: "Please verify your email before logging in",
             success: false,
@@ -158,8 +145,8 @@ export async function login(req, res) {
 
     const token = jwt.sign(
         {
-            id: currentUser._id,
-            username: currentUser.username,
+            id: user._id,
+            username: user.username,
         },
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
@@ -176,9 +163,9 @@ export async function login(req, res) {
         message: "Login successful",
         success: true,
         user: {
-            id: currentUser._id,
-            username: currentUser.username,
-            email: currentUser.email,
+            id: user._id,
+            username: user.username,
+            email: user.email,
         },
     });
 }
