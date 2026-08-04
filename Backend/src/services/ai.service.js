@@ -3,6 +3,12 @@ import { HumanMessage, SystemMessage, AIMessage, tool, createAgent } from "langc
 import * as z from "zod";
 import { searchInternet } from "./internet.service.js";
 
+
+console.log("GEMINI_API_KEY =", process.env.GEMINI_API_KEY);
+console.log("GOOGLE_API_KEY =", process.env.GOOGLE_API_KEY);
+
+
+
 const geminiModel = new ChatGoogleGenerativeAI({
     model: "gemini-2.5-flash-lite",
     apiKey: process.env.GEMINI_API_KEY,
