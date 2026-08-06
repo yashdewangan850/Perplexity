@@ -28,7 +28,6 @@ export const registerValidator = [
     validate
 ];
 
-
 export const loginValidator = [
     body("email")
         .trim()

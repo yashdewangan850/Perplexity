@@ -2,7 +2,7 @@ import axios from 'axios'
 
 
 const api = axios.create({
-    baseURL: "https://perplexity-1-5xj4.onrender.com",
+    baseURL: "http://localhost:3000",
     withCredentials: true,
 })
 
