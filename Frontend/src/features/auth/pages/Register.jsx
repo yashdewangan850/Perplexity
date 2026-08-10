@@ -1,22 +1,33 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router'
-
+import { register } from "../service/auth.api"
 const Register = () => {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  const submitForm = (event) => {
-    event.preventDefault()
+  const submitForm = async (event) => {
+    event.preventDefault();
 
     const payload = {
       username,
       email,
       password,
-    }
+    };
 
-    console.log('Register payload:', payload)
-  }
+    console.log("Register payload:", payload);
+
+    try {
+      const response = await register(payload);
+
+      console.log("Register response:", response);
+    } catch (error) {
+      console.error(
+        "Register error:",
+        error.response?.data || error.message
+      );
+    }
+  };
 
   return (
     <section className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-100 sm:px-6 lg:px-8">
