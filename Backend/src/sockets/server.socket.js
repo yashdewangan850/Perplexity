@@ -8,7 +8,7 @@ export function initSocket(httpServer) {
         cors: {
             origin: "https://perplexity-2-1cpi.onrender.com",
             credentials: true,
-        }
+        }   
     })
 
     console.log("Socket.io server is RUNNING")

@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 3000;
 const httpServer = http.createServer(app);
 
 const allowedOrigins = [
-  "http://localhost:5173",
   "https://perplexity-2-1cpi.onrender.com",
 ];
 
