@@ -199,6 +199,7 @@ export async function logout(req, res) {
                 process.env.NODE_ENV === "production"
                     ? "none"
                     : "lax",
+                    path: "/",
         });
 
         return res.status(200).json({
