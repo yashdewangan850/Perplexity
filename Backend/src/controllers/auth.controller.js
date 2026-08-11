@@ -113,9 +113,15 @@ export async function login(req, res) {
         // Set cookie
         res.cookie("token", token, {
             httpOnly: true,
-            secure: true,
-            sameSite: "none",
-            maxAge: 7 * 24 * 60 * 60 * 1000
+
+            secure: process.env.NODE_ENV === "production",
+
+            sameSite:
+                process.env.NODE_ENV === "production"
+                    ? "none"
+                    : "lax",
+
+            maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
         return res.status(200).json({
@@ -174,6 +180,39 @@ export async function getMe(req, res) {
             message: "Internal server error",
             success: false,
             err: err.message
+        });
+    }
+}
+
+
+/**
+ * @desc Logout user
+ * @route POST /api/auth/logout
+ * @access Public
+ */
+export async function logout(req, res) {
+    try {
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite:
+                process.env.NODE_ENV === "production"
+                    ? "none"
+                    : "lax",
+        });
+
+        return res.status(200).json({
+            message: "Logout successful",
+            success: true,
+        });
+
+    } catch (err) {
+        console.error("Logout error:", err);
+
+        return res.status(500).json({
+            message: "Internal server error",
+            success: false,
+            err: err.message,
         });
     }
 }
