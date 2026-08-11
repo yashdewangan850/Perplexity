@@ -1,5 +1,6 @@
 import "dotenv/config";
 console.log("===== SERVER VERSION 2 =====");
+
 import app from "./src/app.js";
 import connectDB from "./src/config/database.js";
 import http from "http";
