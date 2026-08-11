@@ -43,15 +43,24 @@ const Login = () => {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#08090c] text-white">
-
+    <main
+      className="
+        relative
+        min-h-screen
+        overflow-x-hidden
+        overflow-y-auto
+        bg-[#08090c]
+        text-white
+      "
+    >
       {/* =====================================================
           BACKGROUND EFFECTS
       ====================================================== */}
 
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
 
         {/* Top glow */}
+
         <div
           className="
             absolute
@@ -67,6 +76,7 @@ const Login = () => {
         />
 
         {/* Grid */}
+
         <div
           className="
             absolute inset-0
@@ -84,22 +94,21 @@ const Login = () => {
 
       <header
         className="
-          relative z-10
+          relative z-20
           flex h-[72px]
+          shrink-0
           items-center
           justify-between
           px-5
           md:px-8
         "
       >
-
         {/* Logo */}
 
         <Link
           to="/"
           className="flex items-center gap-2.5"
         >
-
           <div
             className="
               flex h-9 w-9
@@ -120,7 +129,6 @@ const Login = () => {
           <span className="text-lg font-semibold tracking-tight">
             Perplexity
           </span>
-
         </Link>
 
         {/* Register */}
@@ -143,7 +151,6 @@ const Login = () => {
         >
           Create account
         </Link>
-
       </header>
 
       {/* =====================================================
@@ -155,13 +162,18 @@ const Login = () => {
           relative z-10
           flex
           min-h-[calc(100vh-72px)]
-          items-center
+          items-start
           justify-center
           px-4
-          py-10
+          py-8
           sm:px-6
+          md:py-10
+          lg:py-12
         "
       >
+        {/* ===================================================
+            MAIN CARD
+        ==================================================== */}
 
         <div
           className="
@@ -194,7 +206,6 @@ const Login = () => {
               lg:justify-between
             "
           >
-
             <div>
 
               {/* Logo icon */}
@@ -245,12 +256,13 @@ const Login = () => {
                 understand complex topics, and find
                 useful information in one place.
               </p>
-
             </div>
 
             {/* Feature cards */}
 
             <div className="mt-12 space-y-3">
+
+              {/* Search */}
 
               <div
                 className="
@@ -261,7 +273,6 @@ const Login = () => {
                   p-4
                 "
               >
-
                 <div
                   className="
                     flex h-10 w-10
@@ -286,8 +297,9 @@ const Login = () => {
                     Find answers faster
                   </p>
                 </div>
-
               </div>
+
+              {/* AI */}
 
               <div
                 className="
@@ -298,7 +310,6 @@ const Login = () => {
                   p-4
                 "
               >
-
                 <div
                   className="
                     flex h-10 w-10
@@ -323,11 +334,9 @@ const Login = () => {
                     Clear and useful responses
                   </p>
                 </div>
-
               </div>
 
             </div>
-
           </div>
 
           {/* =================================================
@@ -339,7 +348,6 @@ const Login = () => {
             {/* Mobile logo */}
 
             <div className="mb-8 flex justify-center lg:hidden">
-
               <div
                 className="
                   flex h-12 w-12
@@ -354,7 +362,6 @@ const Login = () => {
                   strokeWidth={2.5}
                 />
               </div>
-
             </div>
 
             {/* Heading */}
@@ -401,7 +408,6 @@ const Login = () => {
               >
                 Sign in to continue your conversations.
               </p>
-
             </div>
 
             {/* =================================================
@@ -416,7 +422,6 @@ const Login = () => {
               {/* Email */}
 
               <div>
-
                 <label
                   htmlFor="email"
                   className="
@@ -458,13 +463,11 @@ const Login = () => {
                     focus:ring-white/[0.03]
                   "
                 />
-
               </div>
 
               {/* Password */}
 
               <div>
-
                 <div className="mb-2 flex items-center justify-between">
 
                   <label
@@ -557,7 +560,6 @@ const Login = () => {
                   </button>
 
                 </div>
-
               </div>
 
               {/* Login button */}
@@ -585,7 +587,6 @@ const Login = () => {
                   disabled:opacity-50
                 "
               >
-
                 {loading ? (
                   <>
                     <span
@@ -614,7 +615,6 @@ const Login = () => {
                     />
                   </>
                 )}
-
               </button>
 
             </form>
@@ -655,7 +655,16 @@ const Login = () => {
 
             {/* Footer */}
 
-            <p className="mt-8 text-center text-[11px] leading-5 text-white/20">
+            <p
+              className="
+                mt-8
+                pb-2
+                text-center
+                text-[11px]
+                leading-5
+                text-white/20
+              "
+            >
               By continuing, you agree to use this service
               responsibly.
             </p>
@@ -663,9 +672,7 @@ const Login = () => {
           </div>
 
         </div>
-
       </section>
-
     </main>
   );
 };

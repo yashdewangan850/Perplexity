@@ -53,13 +53,21 @@ const Register = () => {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#08090c] text-white">
-
+    <main
+      className="
+        relative
+        min-h-screen
+        overflow-x-hidden
+        overflow-y-auto
+        bg-[#08090c]
+        text-white
+      "
+    >
       {/* =====================================================
           BACKGROUND
       ====================================================== */}
 
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
 
         {/* Glow */}
 
@@ -96,22 +104,21 @@ const Register = () => {
 
       <header
         className="
-          relative z-10
+          relative z-20
           flex h-[72px]
+          shrink-0
           items-center
           justify-between
           px-5
           md:px-8
         "
       >
-
         {/* Logo */}
 
         <Link
           to="/"
           className="flex items-center gap-2.5"
         >
-
           <div
             className="
               flex h-9 w-9
@@ -132,7 +139,6 @@ const Register = () => {
           <span className="text-lg font-semibold tracking-tight">
             Perplexity
           </span>
-
         </Link>
 
         {/* Login */}
@@ -155,11 +161,10 @@ const Register = () => {
         >
           Sign in
         </Link>
-
       </header>
 
       {/* =====================================================
-          MAIN
+          MAIN CONTENT
       ====================================================== */}
 
       <section
@@ -167,13 +172,18 @@ const Register = () => {
           relative z-10
           flex
           min-h-[calc(100vh-72px)]
-          items-center
+          items-start
           justify-center
           px-4
-          py-10
+          py-8
           sm:px-6
+          md:py-10
+          lg:py-12
         "
       >
+        {/* ===================================================
+            MAIN CARD
+        ==================================================== */}
 
         <div
           className="
@@ -206,7 +216,6 @@ const Register = () => {
               lg:justify-between
             "
           >
-
             <div>
 
               {/* Icon */}
@@ -257,12 +266,13 @@ const Register = () => {
                 ideas, finding answers, and having
                 intelligent conversations.
               </p>
-
             </div>
 
             {/* Feature cards */}
 
             <div className="mt-12 space-y-3">
+
+              {/* Explore */}
 
               <div
                 className="
@@ -273,7 +283,6 @@ const Register = () => {
                   p-4
                 "
               >
-
                 <div
                   className="
                     flex h-10 w-10
@@ -290,7 +299,6 @@ const Register = () => {
                 </div>
 
                 <div>
-
                   <p className="text-sm font-medium text-white/80">
                     Explore anything
                   </p>
@@ -298,10 +306,10 @@ const Register = () => {
                   <p className="mt-1 text-xs text-white/30">
                     Ask questions without limits
                   </p>
-
                 </div>
-
               </div>
+
+              {/* AI */}
 
               <div
                 className="
@@ -312,7 +320,6 @@ const Register = () => {
                   p-4
                 "
               >
-
                 <div
                   className="
                     flex h-10 w-10
@@ -329,7 +336,6 @@ const Register = () => {
                 </div>
 
                 <div>
-
                   <p className="text-sm font-medium text-white/80">
                     AI-powered
                   </p>
@@ -337,13 +343,10 @@ const Register = () => {
                   <p className="mt-1 text-xs text-white/30">
                     Get useful answers quickly
                   </p>
-
                 </div>
-
               </div>
 
             </div>
-
           </div>
 
           {/* =================================================
@@ -355,7 +358,6 @@ const Register = () => {
             {/* Mobile logo */}
 
             <div className="mb-8 flex justify-center lg:hidden">
-
               <div
                 className="
                   flex h-12 w-12
@@ -370,7 +372,6 @@ const Register = () => {
                   strokeWidth={2.5}
                 />
               </div>
-
             </div>
 
             {/* Heading */}
@@ -432,7 +433,6 @@ const Register = () => {
               {/* Username */}
 
               <div>
-
                 <label
                   htmlFor="username"
                   className="
@@ -474,13 +474,11 @@ const Register = () => {
                     focus:ring-white/[0.03]
                   "
                 />
-
               </div>
 
               {/* Email */}
 
               <div>
-
                 <label
                   htmlFor="email"
                   className="
@@ -522,13 +520,11 @@ const Register = () => {
                     focus:ring-white/[0.03]
                   "
                 />
-
               </div>
 
               {/* Password */}
 
               <div>
-
                 <label
                   htmlFor="password"
                   className="
@@ -598,17 +594,14 @@ const Register = () => {
                       hover:text-white/60
                     "
                   >
-
                     {showPassword ? (
                       <EyeOff size={17} />
                     ) : (
                       <Eye size={17} />
                     )}
-
                   </button>
 
                 </div>
-
               </div>
 
               {/* Register button */}
@@ -636,7 +629,6 @@ const Register = () => {
                   disabled:opacity-50
                 "
               >
-
                 {loading ? (
                   <>
                     <span
@@ -665,7 +657,6 @@ const Register = () => {
                     />
                   </>
                 )}
-
               </button>
 
             </form>
@@ -706,7 +697,16 @@ const Register = () => {
 
             {/* Footer */}
 
-            <p className="mt-8 text-center text-[11px] leading-5 text-white/20">
+            <p
+              className="
+                mt-8
+                pb-2
+                text-center
+                text-[11px]
+                leading-5
+                text-white/20
+              "
+            >
               Your account helps keep your conversations
               and preferences organized.
             </p>
@@ -714,9 +714,7 @@ const Register = () => {
           </div>
 
         </div>
-
       </section>
-
     </main>
   );
 };
