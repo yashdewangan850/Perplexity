@@ -37,6 +37,6 @@ authRouter.get('/get-me', authUser, getMe)
  * @access Public
  * @query { token }
  */
-authRouter.get('/verify-email', verifyEmail)
+// authRouter.get('/verify-email', verifyEmail)
 
 export default authRouter;
