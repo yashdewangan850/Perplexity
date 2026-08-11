@@ -171,7 +171,6 @@ const Register = () => {
         className="
           relative z-10
           flex
-          min-h-[calc(100vh-72px)]
           items-start
           justify-center
           px-4
@@ -189,9 +188,9 @@ const Register = () => {
           className="
             grid
             w-full
-            max-w-5xl
+            max-w-4xl
             overflow-hidden
-            rounded-[28px]
+            rounded-[24px]
             border border-white/[0.08]
             bg-white/[0.025]
             shadow-2xl
@@ -210,7 +209,7 @@ const Register = () => {
               hidden
               border-r border-white/[0.06]
               bg-white/[0.015]
-              p-10
+              p-7
               lg:flex
               lg:flex-col
               lg:justify-between
@@ -239,7 +238,7 @@ const Register = () => {
               <h2
                 className="
                   max-w-md
-                  text-4xl
+                  text-3xl
                   font-semibold
                   leading-tight
                   tracking-tight
@@ -270,7 +269,7 @@ const Register = () => {
 
             {/* Feature cards */}
 
-            <div className="mt-12 space-y-3">
+            <div className="mt-8 space-y-3">
 
               {/* Explore */}
 
@@ -353,11 +352,11 @@ const Register = () => {
               REGISTER FORM
           ================================================== */}
 
-          <div className="p-6 sm:p-10 lg:p-12">
+          <div className="p-5 sm:p-7 lg:p-8">
 
             {/* Mobile logo */}
 
-            <div className="mb-8 flex justify-center lg:hidden">
+            <div className="mb-6 flex justify-center lg:hidden">
               <div
                 className="
                   flex h-12 w-12
@@ -427,7 +426,7 @@ const Register = () => {
 
             <form
               onSubmit={submitForm}
-              className="mt-8 space-y-5"
+              className="mt-6 space-y-4"
             >
 
               {/* Username */}
@@ -461,7 +460,7 @@ const Register = () => {
                     rounded-xl
                     border border-white/[0.08]
                     bg-white/[0.025]
-                    px-4 py-3.5
+                    px-4 py-3
                     text-sm
                     text-white
                     outline-none
@@ -507,7 +506,7 @@ const Register = () => {
                     rounded-xl
                     border border-white/[0.08]
                     bg-white/[0.025]
-                    px-4 py-3.5
+                    px-4 py-3
                     text-sm
                     text-white
                     outline-none
@@ -559,7 +558,7 @@ const Register = () => {
                       rounded-xl
                       border border-white/[0.08]
                       bg-white/[0.025]
-                      px-4 py-3.5
+                      px-4 py-3
                       pr-12
                       text-sm
                       text-white
@@ -618,7 +617,7 @@ const Register = () => {
                   gap-2
                   rounded-xl
                   bg-white
-                  px-4 py-3.5
+                  px-4 py-3
                   text-sm
                   font-semibold
                   text-black
@@ -663,7 +662,7 @@ const Register = () => {
 
             {/* Divider */}
 
-            <div className="my-7 flex items-center gap-3">
+            <div className="my-5 flex items-center gap-3">
 
               <div className="h-px flex-1 bg-white/[0.06]" />
 
@@ -699,7 +698,7 @@ const Register = () => {
 
             <p
               className="
-                mt-8
+                mt-5
                 pb-2
                 text-center
                 text-[11px]
