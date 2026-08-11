@@ -163,27 +163,25 @@ const Dashboard = () => {
    * ============================================================
    */
 
-  const handleLogout = async () => {
-    try {
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/logout`,
-        {},
-        {
-          withCredentials: true,
-        }
-      );
+ const handleLogout = async () => {
+  try {
+    await axios.post(
+      "https://perplexity-1-5xj4.onrender.com/api/auth/logout",
+      {},
+      {
+        withCredentials: true,
+      }
+    );
 
-      setProfileOpen(false);
+    setProfileOpen(false);
 
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
+    navigate("/login");
+  } catch (error) {
+    console.error("Logout error:", error);
 
-      // Even if logout API fails,
-      // redirect user to login
-      navigate("/login");
-    }
-  };
+    navigate("/login");
+  }
+};
 
   return (
     <main className="min-h-screen w-full bg-[#08090c] text-white">
