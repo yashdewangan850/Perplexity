@@ -1,9 +1,9 @@
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-
 import {
   ArrowUp,
   Menu,
@@ -16,8 +16,9 @@ import {
   LogOut,
   User,
   LoaderCircle,
+  X,
+  Command,
 } from "lucide-react";
-
 import { useChat } from "../hooks/useChat";
 import axios from "axios";
 
@@ -27,19 +28,17 @@ const Dashboard = () => {
 
   const [chatInput, setChatInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  // Profile dropdown
   const [profileOpen, setProfileOpen] = useState(false);
-
-  // Search / AI loading state
   const [isSearching, setIsSearching] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [searchMode, setSearchMode] = useState(false);
 
-  // Keep track of assistant messages before sending
   const assistantCountBeforeSend = useRef(0);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
   const chats = useSelector((state) => state.chat.chats);
-
   const currentChatId = useSelector(
     (state) => state.chat.currentChatId
   );
@@ -47,21 +46,32 @@ const Dashboard = () => {
   useEffect(() => {
     chat.initializeSocketConnection();
     chat.handleGetChats();
+    // Initialize chat connection and fetch existing conversations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currentChat = chats?.[currentChatId];
-
   const messages = currentChat?.messages || [];
 
   const chatList = useMemo(() => {
-    return Object.values(chats || {});
+    return Object.values(chats || {}).sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0);
+      const dateB = new Date(b.updatedAt || b.createdAt || 0);
+      return dateB - dateA;
+    });
   }, [chats]);
 
-  /*
-   * ============================================================
-   * CHECK WHEN AI RESPONSE ARRIVES
-   * ============================================================
-   */
+  const filteredChats = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+
+    if (!query) return chatList;
+
+    return chatList.filter((item) =>
+      (item.title || "New conversation")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [chatList, historySearch]);
 
   useEffect(() => {
     if (!isSearching) return;
@@ -78,35 +88,54 @@ const Dashboard = () => {
     }
   }, [messages, isSearching]);
 
-  /*
-   * ============================================================
-   * SEND MESSAGE
-   * ============================================================
-   */
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [messages, pendingQuestion, isSearching]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
+        event.preventDefault();
+        handleNewThread();
+        inputRef.current?.focus();
+      }
+
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+        setSearchMode(false);
+        setHistorySearch("");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmitMessage = async (event) => {
     event.preventDefault();
 
     const trimmedMessage = chatInput.trim();
 
-    if (!trimmedMessage || isSearching) {
-      return;
-    }
+    if (!trimmedMessage || isSearching) return;
 
     const assistantMessages = messages.filter(
       (message) => message.role === "assistant"
     );
 
-    // Save current assistant message count
     assistantCountBeforeSend.current = assistantMessages.length;
 
-    // Immediately show user's question
     setPendingQuestion(trimmedMessage);
-
-    // Show searching state
     setIsSearching(true);
-
-    // Clear input
     setChatInput("");
 
     try {
@@ -116,345 +145,272 @@ const Dashboard = () => {
       });
     } catch (error) {
       console.error("Message sending error:", error);
-
       setIsSearching(false);
       setPendingQuestion("");
     }
   };
-
-  /*
-   * ============================================================
-   * OPEN CHAT
-   * ============================================================
-   */
 
   const openChat = (chatId) => {
     chat.handleOpenChat(chatId, chats);
 
     setPendingQuestion("");
     setIsSearching(false);
+    setProfileOpen(false);
 
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   };
 
-  /*
-   * ============================================================
-   * NEW THREAD
-   * ============================================================
-   *
-   * NOTE:
-   * Your current useChat hook doesn't expose a new-chat function
-   * in the code you provided, so this only clears the local UI.
-   *
-   * We can connect this to backend later.
-   */
-
   const handleNewThread = () => {
     setChatInput("");
     setPendingQuestion("");
     setIsSearching(false);
-  };
-
-  /*
-   * ============================================================
-   * LOGOUT
-   * ============================================================
-   */
-
- const handleLogout = async () => {
-  try {
-    await axios.post(
-      "https://perplexity-1-5xj4.onrender.com/api/auth/logout",
-      {},
-      {
-        withCredentials: true,
-      }
-    );
-
     setProfileOpen(false);
 
-    navigate("/login");
-  } catch (error) {
-    console.error("Logout error:", error);
+    /*
+      Your current useChat hook does not expose a new-chat action.
+      This resets the visible input/loading state, but does not create
+      a new backend conversation or clear the selected Redux chat.
+    */
+  };
 
-    navigate("/login");
-  }
-};
+  const handleLogout = async () => {
+    try {
+      await axios.post(
+        "https://perplexity-1-5xj4.onrender.com/api/auth/logout",
+        {},
+        { withCredentials: true }
+      );
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setProfileOpen(false);
+      navigate("/login");
+    }
+  };
+
+  const suggestions = [
+    {
+      title: "Learn React hooks",
+      description: "Understand state and effects",
+      prompt: "Explain React hooks with simple examples",
+      icon: Sparkles,
+    },
+    {
+      title: "Explore JavaScript",
+      description: "Learn important concepts",
+      prompt: "Explain important JavaScript concepts for interviews",
+      icon: Command,
+    },
+    {
+      title: "Build a project",
+      description: "Get project ideas and steps",
+      prompt: "Suggest a practical MERN Stack project for my portfolio",
+      icon: MessageSquare,
+    },
+    {
+      title: "Solve a problem",
+      description: "Break down a difficult topic",
+      prompt: "Explain how REST APIs work with a Node.js example",
+      icon: Search,
+    },
+  ];
 
   return (
-    <main className="min-h-screen w-full bg-[#08090c] text-white">
+    <main className="min-h-screen w-full overflow-hidden bg-[#06152d] text-white">
       <div className="flex h-screen overflow-hidden">
 
-        {/* =====================================================
-            MOBILE OVERLAY
-        ====================================================== */}
+        {/* Background glow */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-teal-500/[0.08] blur-[120px]" />
+          <div className="absolute -bottom-48 right-0 h-[500px] w-[500px] rounded-full bg-emerald-500/[0.06] blur-[140px]" />
+        </div>
 
+        {/* Mobile overlay */}
         {sidebarOpen && (
-          <div
+          <button
+            type="button"
+            aria-label="Close sidebar"
             onClick={() => setSidebarOpen(false)}
             className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
           />
         )}
 
-        {/* =====================================================
-            SIDEBAR
-        ====================================================== */}
-
+        {/* Sidebar */}
         <aside
           className={`
             fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col
-            border-r border-white/[0.06]
-            bg-[#0b0c10]
+            border-r border-teal-300/10 bg-[#071a32]/95
+            shadow-2xl shadow-black/20 backdrop-blur-2xl
             transition-transform duration-300
-            md:relative md:z-20
+            md:relative md:z-20 md:translate-x-0
             ${
               sidebarOpen
                 ? "translate-x-0"
-                : "-translate-x-full md:-translate-x-0"
+                : "-translate-x-full md:hidden"
             }
-            ${!sidebarOpen ? "md:hidden" : ""}
           `}
         >
-
           {/* Logo */}
-
-          <div className="flex h-[72px] items-center justify-between px-5">
-            <div className="flex items-center gap-2.5">
-
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black">
-                <Sparkles
-                  size={17}
-                  strokeWidth={2.5}
-                />
+          <div className="flex h-[72px] shrink-0 items-center justify-between px-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-300 to-emerald-500 text-[#05251f] shadow-lg shadow-teal-500/20">
+                <Sparkles size={21} strokeWidth={2.5} />
               </div>
 
-              <span className="text-[19px] font-semibold tracking-tight">
-                Perplexity
-              </span>
-
+              <div>
+                <h1 className="text-lg font-bold tracking-tight text-white">
+                  Perplexity
+                </h1>
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-teal-300/60">
+                  AI workspace
+                </p>
+              </div>
             </div>
 
             <button
+              type="button"
+              aria-label="Close sidebar"
               onClick={() => setSidebarOpen(false)}
-              className="rounded-lg p-2 text-white/40 transition hover:bg-white/5 hover:text-white md:hidden"
+              className="rounded-lg p-2 text-white/45 transition hover:bg-white/5 hover:text-teal-300 md:hidden"
             >
               <PanelLeft size={18} />
             </button>
           </div>
 
-          {/* =====================================================
-              NEW THREAD
-          ====================================================== */}
-
-          <div className="px-4">
-
+          {/* New thread */}
+          <div className="px-4 pt-3">
             <button
               type="button"
               onClick={handleNewThread}
-              className="
-                flex w-full items-center gap-3 rounded-xl
-                border border-white/[0.08]
-                bg-white/[0.035]
-                px-4 py-3
-                text-sm font-medium text-white/90
-                transition
-                hover:border-white/[0.14]
-                hover:bg-white/[0.07]
-              "
+              className="group flex w-full items-center gap-3 rounded-xl border border-teal-300/20 bg-gradient-to-r from-teal-400/15 to-emerald-400/[0.07] px-4 py-3 text-sm font-semibold text-teal-100 shadow-lg shadow-teal-950/10 transition duration-200 hover:border-teal-300/40 hover:from-teal-400/20 hover:to-emerald-400/15"
             >
-
-              <Plus size={17} />
-
-              <span>
-                New thread
+              <Plus
+                size={18}
+                className="text-teal-300 transition-transform group-hover:rotate-90"
+              />
+              <span>New thread</span>
+              <span className="ml-auto flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-1 text-[10px] text-white/35">
+                <Command size={10} /> K
               </span>
-
-              <span className="ml-auto text-xs text-white/30">
-                Ctrl K
-              </span>
-
             </button>
-
           </div>
 
-          {/* =====================================================
-              SEARCH THREADS
-          ====================================================== */}
-
+          {/* Search history */}
           <div className="px-4 pt-3">
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-teal-100/35"
+              />
 
-            <button
-              type="button"
-              className="
-                flex w-full items-center gap-3 rounded-xl
-                px-3 py-2.5
-                text-sm text-white/45
-                transition
-                hover:bg-white/[0.04]
-                hover:text-white/70
-              "
-            >
-
-              <Search size={16} />
-
-              <span>
-                Search threads
-              </span>
-
-            </button>
-
+              <input
+                value={historySearch}
+                onChange={(event) =>
+                  setHistorySearch(event.target.value)
+                }
+                placeholder="Search conversations"
+                aria-label="Search conversations"
+                className="w-full rounded-xl border border-white/[0.06] bg-white/[0.035] py-2.5 pl-9 pr-3 text-xs text-white outline-none transition placeholder:text-white/30 focus:border-teal-300/30 focus:bg-teal-300/[0.04]"
+              />
+            </div>
           </div>
 
-          {/* =====================================================
-              CHAT HISTORY
-          ====================================================== */}
+          {/* Chat history */}
+          <div className="mt-7 min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+            <div className="mb-3 flex items-center justify-between px-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-100/40">
+                Recent chats
+              </span>
 
-          <div className="mt-7 flex-1 overflow-y-auto px-3">
-
-            <div className="mb-2 px-2 text-[11px] font-medium uppercase tracking-wider text-white/25">
-              Recent
+              <span className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-white/35">
+                {filteredChats.length}
+              </span>
             </div>
 
             <div className="space-y-1">
-
-              {chatList.length > 0 ? (
-
-                chatList.map((item) => {
-
-                  const active =
-                    item.id === currentChatId;
+              {filteredChats.length > 0 ? (
+                filteredChats.map((item) => {
+                  const active = item.id === currentChatId;
 
                   return (
                     <button
                       key={item.id}
-                      onClick={() => openChat(item.id)}
                       type="button"
+                      onClick={() => openChat(item.id)}
+                      title={item.title || "New conversation"}
                       className={`
                         group flex w-full items-center gap-3
-                        rounded-xl px-3 py-2.5
-                        text-left text-sm
-                        transition
+                        rounded-xl border px-3 py-2.5 text-left
+                        transition duration-200
                         ${
                           active
-                            ? "bg-white/[0.08] text-white"
-                            : "text-white/45 hover:bg-white/[0.045] hover:text-white/80"
+                            ? "border-teal-300/15 bg-teal-300/[0.09] text-white"
+                            : "border-transparent text-white/50 hover:border-white/[0.05] hover:bg-white/[0.035] hover:text-white/85"
                         }
                       `}
                     >
-
                       <MessageSquare
                         size={15}
                         className={
                           active
-                            ? "text-white/80"
-                            : "text-white/25"
+                            ? "shrink-0 text-teal-300"
+                            : "shrink-0 text-white/30 group-hover:text-teal-200/70"
                         }
                       />
 
-                      <span className="min-w-0 flex-1 truncate">
+                      <span className="min-w-0 flex-1 truncate text-[13px]">
                         {item.title || "New conversation"}
                       </span>
 
                       {active && (
-                        <MoreHorizontal
-                          size={16}
-                          className="text-white/30"
-                        />
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-teal-300 shadow-[0_0_8px_rgba(94,234,212,0.7)]" />
                       )}
-
                     </button>
                   );
                 })
-
               ) : (
-
-                <div className="px-3 py-8 text-center text-xs text-white/25">
-                  No conversations yet
+                <div className="px-3 py-10 text-center">
+                  <MessageSquare
+                    size={22}
+                    className="mx-auto mb-3 text-white/20"
+                  />
+                  <p className="text-xs text-white/35">
+                    {historySearch
+                      ? "No matching conversations"
+                      : "No conversations yet"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-white/20">
+                    Start a new chat to get going.
+                  </p>
                 </div>
-
               )}
-
             </div>
           </div>
 
-          {/* =====================================================
-              PROFILE
-          ====================================================== */}
-
-          <div className="relative border-t border-white/[0.06] p-4">
-
-            {/* Profile button */}
-
-            <button
-              type="button"
-              onClick={() =>
-                setProfileOpen((prev) => !prev)
-              }
-              className="
-                flex w-full items-center gap-3
-                rounded-xl px-2 py-2
-                text-left
-                transition
-                hover:bg-white/[0.05]
-              "
-            >
-
-              <div
-                className="
-                  flex h-9 w-9 shrink-0
-                  items-center justify-center
-                  rounded-full
-                  bg-gradient-to-br
-                  from-white/25
-                  to-white/5
-                  text-sm font-semibold
-                "
-              >
-                Y
-              </div>
-
-              <div className="min-w-0 flex-1">
-
-                <p className="truncate text-sm font-medium text-white/85">
-                  Personal
-                </p>
-
-                <p className="text-xs text-white/30">
-                  Free plan
-                </p>
-
-              </div>
-
-              <MoreHorizontal
-                size={17}
-                className="text-white/30"
-              />
-
-            </button>
-
-            {/* =================================================
-                PROFILE DROPDOWN
-            ================================================== */}
-
+          {/* Sidebar footer */}
+          <div className="relative shrink-0 border-t border-teal-100/[0.08] p-4">
             {profileOpen && (
+              <button
+                type="button"
+                aria-label="Close profile menu"
+                onClick={() => setProfileOpen(false)}
+                className="fixed inset-0 z-40 cursor-default"
+              />
+            )}
 
-              <div
-                className="
-                  absolute bottom-[72px] left-4 right-4
-                  z-50
-                  overflow-hidden
-                  rounded-2xl
-                  border border-white/[0.08]
-                  bg-[#15171c]
-                  p-1.5
-                  shadow-2xl
-                  shadow-black/50
-                "
-              >
-
-                {/* Profile */}
+            {/* Profile dropdown */}
+            {profileOpen && (
+              <div className="absolute bottom-[78px] left-4 right-4 z-50 overflow-hidden rounded-2xl border border-teal-100/10 bg-[#0b203a] p-1.5 shadow-2xl shadow-black/50">
+                <div className="border-b border-white/[0.06] px-3 py-3">
+                  <p className="text-xs font-semibold text-white/85">
+                    Personal workspace
+                  </p>
+                  <p className="mt-1 text-[11px] text-white/35">
+                    Manage your account
+                  </p>
+                </div>
 
                 <button
                   type="button"
@@ -462,673 +418,420 @@ const Dashboard = () => {
                     setProfileOpen(false);
                     navigate("/profile");
                   }}
-                  className="
-                    flex w-full items-center gap-3
-                    rounded-xl px-3 py-2.5
-                    text-sm text-white/70
-                    transition
-                    hover:bg-white/[0.07]
-                    hover:text-white
-                  "
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/70 transition hover:bg-teal-300/[0.08] hover:text-teal-100"
                 >
-
                   <User size={16} />
-
-                  <span>
-                    Profile
-                  </span>
-
+                  <span>Profile</span>
                 </button>
-
-                <div className="my-1 border-t border-white/[0.06]" />
-
-                {/* Logout */}
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="
-                    flex w-full items-center gap-3
-                    rounded-xl px-3 py-2.5
-                    text-sm text-red-400
-                    transition
-                    hover:bg-red-500/10
-                    hover:text-red-300
-                  "
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 transition hover:bg-red-400/10 hover:text-red-200"
                 >
-
                   <LogOut size={16} />
-
-                  <span>
-                    Logout
-                  </span>
-
+                  <span>Logout</span>
                 </button>
-
               </div>
-
             )}
-
-          </div>
-
-        </aside>
-
-        {/* =====================================================
-            MAIN CONTENT
-        ====================================================== */}
-
-        <section className="relative flex min-w-0 flex-1 flex-col">
-
-          {/* =====================================================
-              TOP BAR
-          ====================================================== */}
-
-          <header
-            className="
-              flex h-[72px] shrink-0 items-center
-              border-b border-white/[0.05]
-              px-4 md:px-6
-            "
-          >
 
             <button
               type="button"
-              onClick={() =>
-                setSidebarOpen(!sidebarOpen)
-              }
-              className="
-                rounded-xl p-2
-                text-white/45
-                transition
-                hover:bg-white/[0.05]
-                hover:text-white
-              "
+              onClick={() => setProfileOpen((prev) => !prev)}
+              className="flex w-full items-center gap-3 rounded-xl border border-transparent px-2 py-2 text-left transition hover:border-white/[0.06] hover:bg-white/[0.035]"
             >
-              <Menu size={19} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-200/20 bg-gradient-to-br from-teal-300/25 to-emerald-500/10 text-sm font-bold text-teal-200">
+                Y
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white/85">
+                  Personal
+                </p>
+                <p className="mt-0.5 text-[11px] text-white/35">
+                  AI workspace
+                </p>
+              </div>
+
+              <MoreHorizontal
+                size={18}
+                className="text-white/35"
+              />
+            </button>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <section className="relative z-10 flex min-w-0 flex-1 flex-col">
+          {/* Topbar */}
+          <header className="flex h-[72px] shrink-0 items-center border-b border-teal-100/[0.08] bg-[#06152d]/70 px-4 backdrop-blur-xl md:px-7">
+            <button
+              type="button"
+              aria-label="Toggle sidebar"
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              className="rounded-xl border border-white/[0.06] p-2.5 text-white/55 transition hover:border-teal-300/20 hover:bg-teal-300/[0.06] hover:text-teal-200"
+            >
+              <Menu size={18} />
             </button>
 
             <div className="ml-3 flex items-center gap-2 md:hidden">
-
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-black">
-                <Sparkles size={14} />
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-300 to-emerald-500 text-[#05251f]">
+                <Sparkles size={15} />
               </div>
+              <span className="text-sm font-bold">Perplexity</span>
+            </div>
 
-              <span className="font-semibold">
-                Perplexity
+            <div className="ml-4 hidden items-center gap-2 sm:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.6)]" />
+              <span className="text-xs text-white/40">
+                AI Assistant
               </span>
-
             </div>
 
             <div className="ml-auto flex items-center gap-2">
+              <div className="hidden items-center gap-2 rounded-full border border-teal-300/10 bg-teal-300/[0.04] px-3 py-1.5 sm:flex">
+                <Sparkles size={13} className="text-teal-300" />
+                <span className="text-[11px] font-medium text-teal-100/70">
+                  Ready to explore
+                </span>
+              </div>
 
               <button
-                className="
-                  hidden rounded-xl px-3 py-2
-                  text-xs text-white/40
-                  transition hover:bg-white/5 hover:text-white/70
-                  sm:block
-                "
+                type="button"
+                onClick={handleNewThread}
+                title="New thread"
+                className="rounded-xl border border-white/[0.06] p-2.5 text-white/45 transition hover:border-teal-300/20 hover:bg-teal-300/[0.06] hover:text-teal-200"
               >
-                Share
+                <Plus size={18} />
               </button>
-
-              <button
-                className="
-                  rounded-xl p-2
-                  text-white/40
-                  transition
-                  hover:bg-white/5
-                  hover:text-white
-                "
-              >
-                <MoreHorizontal size={19} />
-              </button>
-
             </div>
-
           </header>
 
-          {/* =====================================================
-              CHAT AREA
-          ====================================================== */}
-
-          <div className="relative flex-1 overflow-hidden">
-
-            <div
-              className="
-                h-full overflow-y-auto
-                px-4 pb-44 pt-8
-                md:px-8 md:pt-10
-              "
-            >
-
+          {/* Chat area */}
+          <div className="relative min-h-0 flex-1">
+            <div className="h-full overflow-y-auto px-4 pb-48 pt-8 md:px-8 md:pt-10">
               <div className="mx-auto w-full max-w-3xl">
 
-                {/* =================================================
-                    EMPTY STATE
-                ================================================== */}
+                {/* Empty state */}
+                {!messages.length && !pendingQuestion ? (
+                  <div className="flex min-h-[calc(100vh-280px)] flex-col items-center justify-center pb-6 text-center">
+                    <div className="relative mb-7">
+                      <div className="absolute inset-0 rounded-3xl bg-teal-400/20 blur-2xl" />
 
-                {!messages.length &&
-                !pendingQuestion ? (
-
-                  <div
-                    className="
-                      flex min-h-[calc(100vh-260px)]
-                      flex-col items-center
-                      justify-center
-                      text-center
-                    "
-                  >
-
-                    <div
-                      className="
-                        mb-6 flex h-14 w-14
-                        items-center justify-center
-                        rounded-2xl
-                        border border-white/[0.08]
-                        bg-white/[0.035]
-                        shadow-2xl shadow-black/30
-                      "
-                    >
-                      <Sparkles
-                        size={25}
-                        className="text-white/80"
-                      />
+                      <div className="relative flex h-[68px] w-[68px] items-center justify-center rounded-[22px] border border-teal-200/20 bg-gradient-to-br from-teal-300/20 to-emerald-500/[0.06] shadow-xl shadow-teal-950/20">
+                        <Sparkles
+                          size={29}
+                          className="text-teal-200"
+                          strokeWidth={1.7}
+                        />
+                      </div>
                     </div>
 
-                    <h2
-                      className="
-                        text-3xl font-semibold
-                        tracking-tight
-                        text-white
-                        md:text-4xl
-                      "
-                    >
-                      What do you want to know?
-                    </h2>
-
-                    <p className="mt-3 max-w-md text-sm leading-6 text-white/35 md:text-base">
-                      Ask anything. Search the web, explore ideas,
-                      write content, or solve a problem.
+                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.3em] text-teal-300/70">
+                      Your AI workspace
                     </p>
 
-                    <div className="mt-8 grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+                    <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">
+                      What do you want to{" "}
+                      <span className="bg-gradient-to-r from-teal-200 via-teal-300 to-emerald-300 bg-clip-text text-transparent">
+                        explore?
+                      </span>
+                    </h2>
 
-                      {[
-                        "Explain React hooks",
-                        "What is artificial intelligence?",
-                        "Build a portfolio website",
-                        "Explain JavaScript closures",
-                      ].map((suggestion) => (
+                    <p className="mt-4 max-w-md text-sm leading-7 text-white/45">
+                      Ask questions, learn new concepts, write code,
+                      and explore ideas with your AI assistant.
+                    </p>
 
-                        <button
-                          key={suggestion}
-                          type="button"
-                          onClick={() =>
-                            setChatInput(suggestion)
-                          }
-                          className="
-                            rounded-xl
-                            border border-white/[0.06]
-                            bg-white/[0.025]
-                            px-4 py-3
-                            text-left text-sm
-                            text-white/45
-                            transition
-                            hover:border-white/[0.12]
-                            hover:bg-white/[0.05]
-                            hover:text-white/80
-                          "
-                        >
-                          {suggestion}
-                        </button>
+                    <div className="mt-9 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+                      {suggestions.map((suggestion) => {
+                        const Icon = suggestion.icon;
 
-                      ))}
+                        return (
+                          <button
+                            key={suggestion.title}
+                            type="button"
+                            onClick={() => {
+                              setChatInput(suggestion.prompt);
+                              inputRef.current?.focus();
+                            }}
+                            className="group flex items-start gap-3 rounded-2xl border border-teal-100/[0.09] bg-white/[0.025] p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-teal-300/25 hover:bg-teal-300/[0.05] hover:shadow-lg hover:shadow-teal-950/10"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.08] text-teal-200 transition group-hover:bg-teal-300/[0.14]">
+                              <Icon size={18} />
+                            </div>
 
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-white/85 transition group-hover:text-teal-100">
+                                {suggestion.title}
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-white/40">
+                                {suggestion.description}
+                              </p>
+                            </div>
+
+                            <ArrowUp
+                              size={15}
+                              className="mt-1 -rotate-45 text-white/20 transition group-hover:text-teal-200"
+                            />
+                          </button>
+                        );
+                      })}
                     </div>
-
                   </div>
-
                 ) : (
-
-                  /* =================================================
-                     MESSAGES
-                  ================================================== */
-
                   <div className="space-y-8">
-
-                    {/* =================================================
-                        PENDING USER QUESTION
-                    ================================================== */}
-
-                    {pendingQuestion &&
-                      !messages.some(
-                        (message) =>
-                          message.role === "user" &&
-                          message.content === pendingQuestion
-                      ) && (
-
-                        <div className="flex w-full justify-end">
-
-                          <div
-                            className="
-                              max-w-[85%]
-                              rounded-2xl
-                              rounded-br-md
-                              bg-white/[0.09]
-                              px-4 py-3
-                              text-[15px]
-                              leading-7
-                              text-white/90
-                              md:max-w-[75%]
-                            "
-                          >
-                            {pendingQuestion}
-                          </div>
-
-                        </div>
-
-                      )}
-
-                    {/* =================================================
-                        EXISTING MESSAGES
-                    ================================================== */}
-
-                    {messages.map((message) => (
-
+                    {messages.map((message, index) => (
                       <div
-                        key={message.id}
-                        className={`
-                          flex w-full
-                          ${
-                            message.role === "user"
-                              ? "justify-end"
-                              : "justify-start"
-                          }
-                        `}
+                        key={message.id || `${message.role}-${index}`}
+                        className={`flex w-full ${
+                          message.role === "user"
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
                       >
-
-                        {/* USER MESSAGE */}
-
                         {message.role === "user" ? (
-
-                          <div
-                            className="
-                              max-w-[85%]
-                              rounded-2xl
-                              rounded-br-md
-                              bg-white/[0.09]
-                              px-4 py-3
-                              text-[15px]
-                              leading-7
-                              text-white/90
-                              md:max-w-[75%]
-                            "
-                          >
-                            {message.content}
+                          <div className="max-w-[90%] rounded-2xl rounded-br-md border border-teal-200/10 bg-gradient-to-br from-teal-400/[0.15] to-emerald-400/[0.07] px-4 py-3 text-[14px] leading-7 text-white/90 shadow-lg shadow-black/5 md:max-w-[80%]">
+                            <div className="whitespace-pre-wrap break-words">
+                              {message.content}
+                            </div>
                           </div>
-
                         ) : (
-
-                          /* AI MESSAGE */
-
                           <div className="w-full max-w-3xl">
-
-                            <div className="mb-3 flex items-center gap-2">
-
-                              <div
-                                className="
-                                  flex h-7 w-7
-                                  items-center justify-center
-                                  rounded-lg
-                                  bg-white
-                                  text-black
-                                "
-                              >
-                                <Sparkles size={14} />
+                            <div className="mb-3 flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-teal-200/15 bg-gradient-to-br from-teal-300/20 to-emerald-400/[0.06] text-teal-200">
+                                <Sparkles size={15} />
                               </div>
 
-                              <span className="text-xs font-medium text-white/50">
+                              <span className="text-xs font-semibold text-teal-100/80">
                                 Perplexity
                               </span>
 
+                              <span className="text-[10px] text-white/25">
+                                AI response
+                              </span>
                             </div>
 
-                            <div
-                              className="
-                                prose prose-invert
-                                max-w-none
-                                text-[15px]
-                                leading-7
-                                text-white/80
-                              "
-                            >
-
+                            <div className="prose prose-invert max-w-none break-words text-[14px] leading-7 text-white/75 prose-headings:font-semibold prose-headings:text-white prose-a:text-teal-300 prose-strong:text-white prose-li:marker:text-teal-300 prose-hr:border-white/10">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
-
                                   h1: ({ children }) => (
                                     <h1 className="mb-4 mt-6 text-2xl font-semibold text-white">
                                       {children}
                                     </h1>
                                   ),
-
                                   h2: ({ children }) => (
                                     <h2 className="mb-3 mt-6 text-xl font-semibold text-white">
                                       {children}
                                     </h2>
                                   ),
-
                                   h3: ({ children }) => (
                                     <h3 className="mb-2 mt-5 text-lg font-semibold text-white">
                                       {children}
                                     </h3>
                                   ),
-
                                   p: ({ children }) => (
                                     <p className="mb-4 leading-7 last:mb-0">
                                       {children}
                                     </p>
                                   ),
-
                                   ul: ({ children }) => (
                                     <ul className="mb-4 list-disc space-y-1 pl-6">
                                       {children}
                                     </ul>
                                   ),
-
                                   ol: ({ children }) => (
                                     <ol className="mb-4 list-decimal space-y-1 pl-6">
                                       {children}
                                     </ol>
                                   ),
-
                                   li: ({ children }) => (
                                     <li className="pl-1">
                                       {children}
                                     </li>
                                   ),
-
-                                  strong: ({ children }) => (
-                                    <strong className="font-semibold text-white">
-                                      {children}
-                                    </strong>
-                                  ),
-
                                   blockquote: ({ children }) => (
-                                    <blockquote
-                                      className="
-                                        my-4 border-l-2
-                                        border-white/20
-                                        pl-4 text-white/50
-                                      "
-                                    >
+                                    <blockquote className="my-4 border-l-2 border-teal-300/40 pl-4 text-white/55">
                                       {children}
                                     </blockquote>
                                   ),
-
-                                  code: ({
-                                    inline,
-                                    children,
-                                  }) =>
-                                    inline ? (
-                                      <code
-                                        className="
-                                          rounded-md
-                                          bg-white/[0.08]
-                                          px-1.5 py-0.5
-                                          font-mono text-[13px]
-                                          text-white/80
-                                        "
-                                      >
-                                        {children}
-                                      </code>
-                                    ) : (
-                                      <code className="font-mono text-[13px]">
-                                        {children}
-                                      </code>
-                                    ),
-
-                                  pre: ({ children }) => (
-                                    <pre
-                                      className="
-                                        my-5 overflow-x-auto
-                                        rounded-xl
-                                        border border-white/[0.06]
-                                        bg-[#050609]
-                                        p-4
-                                        leading-6
-                                      "
+                                  code: ({ children, className }) => (
+                                    <code
+                                      className={`rounded-md bg-teal-200/[0.08] px-1.5 py-0.5 font-mono text-[13px] text-teal-100/90 ${className || ""}`}
                                     >
+                                      {children}
+                                    </code>
+                                  ),
+                                  pre: ({ children }) => (
+                                    <pre className="my-5 overflow-x-auto rounded-xl border border-teal-100/10 bg-[#04101f] p-4 leading-6">
                                       {children}
                                     </pre>
                                   ),
-
                                   a: ({ children, href }) => (
                                     <a
                                       href={href}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="
-                                        text-white
-                                        underline
-                                        decoration-white/20
-                                        underline-offset-4
-                                        hover:decoration-white
-                                      "
+                                      className="text-teal-300 underline decoration-teal-300/30 underline-offset-4 hover:text-teal-200"
                                     >
                                       {children}
                                     </a>
                                   ),
-
                                   hr: () => (
                                     <hr className="my-6 border-white/[0.08]" />
                                   ),
-
+                                  table: ({ children }) => (
+                                    <div className="my-5 overflow-x-auto rounded-xl border border-white/10">
+                                      <table className="w-full border-collapse text-left text-sm">
+                                        {children}
+                                      </table>
+                                    </div>
+                                  ),
+                                  th: ({ children }) => (
+                                    <th className="border-b border-white/10 bg-teal-300/[0.07] px-3 py-2 font-semibold text-teal-100">
+                                      {children}
+                                    </th>
+                                  ),
+                                  td: ({ children }) => (
+                                    <td className="border-b border-white/[0.06] px-3 py-2">
+                                      {children}
+                                    </td>
+                                  ),
                                 }}
                               >
                                 {message.content}
                               </ReactMarkdown>
-
                             </div>
-
                           </div>
-
                         )}
-
                       </div>
-
                     ))}
 
-                    {/* =================================================
-                        SEARCHING INDICATOR
-                    ================================================== */}
-
-                    {isSearching && (
-
-                      <div className="flex w-full justify-start">
-
-                        <div className="w-full max-w-3xl">
-
-                          <div className="mb-3 flex items-center gap-2">
-
-                            <div
-                              className="
-                                flex h-7 w-7
-                                items-center justify-center
-                                rounded-lg
-                                bg-white
-                                text-black
-                              "
-                            >
-                              <Sparkles size={14} />
-                            </div>
-
-                            <span className="text-xs font-medium text-white/50">
-                              Perplexity
-                            </span>
-
+                    {/* Pending user question */}
+                    {pendingQuestion && (
+                      <div className="flex w-full justify-end">
+                        <div className="max-w-[90%] rounded-2xl rounded-br-md border border-teal-200/10 bg-gradient-to-br from-teal-400/[0.15] to-emerald-400/[0.07] px-4 py-3 text-[14px] leading-7 text-white/90 md:max-w-[80%]">
+                          <div className="whitespace-pre-wrap break-words">
+                            {pendingQuestion}
                           </div>
-
-                          <div className="flex items-center gap-3 text-sm text-white/40">
-
-                            <LoaderCircle
-                              size={16}
-                              className="animate-spin"
-                            />
-
-                            <span>
-                              Searching for the best answer...
-                            </span>
-
-                          </div>
-
                         </div>
-
                       </div>
-
                     )}
 
-                  </div>
+                    {/* Searching indicator */}
+                    {isSearching && (
+                      <div className="flex w-full justify-start">
+                        <div className="w-full max-w-3xl">
+                          <div className="mb-3 flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-teal-200/15 bg-teal-300/[0.08] text-teal-200">
+                              <Sparkles size={15} />
+                            </div>
 
+                            <span className="text-xs font-semibold text-teal-100/80">
+                              Perplexity
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 rounded-xl border border-teal-200/10 bg-teal-300/[0.035] px-4 py-3">
+                            <LoaderCircle
+                              size={17}
+                              className="animate-spin text-teal-300"
+                            />
+                            <span className="text-sm text-white/45">
+                              Thinking and preparing a response...
+                            </span>
+                            <div className="ml-auto flex gap-1">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-300" />
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-300 [animation-delay:150ms]" />
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-300 [animation-delay:300ms]" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
+                <div ref={messagesEndRef} />
               </div>
-
             </div>
 
-            {/* =====================================================
-                BOTTOM INPUT
-            ====================================================== */}
-
-            <div
-              className="
-                pointer-events-none
-                absolute bottom-0 left-0 right-0
-                bg-gradient-to-t
-                from-[#08090c]
-                via-[#08090c]/95
-                to-transparent
-                px-4 pb-5 pt-14
-                md:px-8
-              "
-            >
-
-              <div className="pointer-events-auto mx-auto w-full max-w-3xl">
-
+            {/* Message composer */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#06152d] via-[#06152d]/95 to-transparent px-4 pb-4 pt-12 md:px-8 md:pb-6">
+              <div className="mx-auto max-w-3xl">
                 <form
                   onSubmit={handleSubmitMessage}
-                  className="
-                    relative
-                    rounded-2xl
-                    border border-white/[0.10]
-                    bg-[#111318]
-                    shadow-2xl
-                    shadow-black/40
-                    transition
-                    focus-within:border-white/[0.18]
-                    focus-within:bg-[#13151a]
-                  "
+                  className="relative rounded-2xl border border-teal-200/15 bg-[#0a203a]/90 p-2 shadow-2xl shadow-black/20 backdrop-blur-xl transition duration-200 focus-within:border-teal-300/40 focus-within:shadow-teal-950/20"
                 >
+                  <div className="flex items-center gap-2 px-3 pb-1 pt-2">
+                    <Sparkles
+                      size={15}
+                      className="shrink-0 text-teal-300"
+                    />
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-100/45">
+                      Ask anything
+                    </span>
+                  </div>
 
                   <textarea
+                    ref={inputRef}
                     value={chatInput}
                     onChange={(event) =>
                       setChatInput(event.target.value)
                     }
                     onKeyDown={(event) => {
-
                       if (
                         event.key === "Enter" &&
-                        !event.shiftKey
+                        !event.shiftKey &&
+                        !event.nativeEvent.isComposing
                       ) {
                         event.preventDefault();
-
-                        handleSubmitMessage(event);
+                        event.currentTarget.form?.requestSubmit();
                       }
-
                     }}
-                    rows={1}
+                    placeholder="Ask a question or explore an idea..."
+                    rows={2}
                     disabled={isSearching}
-                    placeholder={
-                      isSearching
-                        ? "Searching..."
-                        : "Ask anything..."
-                    }
-                    className="
-                      min-h-[58px]
-                      w-full
-                      resize-none
-                      bg-transparent
-                      px-5
-                      py-4
-                      pr-16
-                      text-[15px]
-                      text-white
-                      outline-none
-                      placeholder:text-white/25
-                      disabled:cursor-not-allowed
-                      disabled:opacity-60
-                    "
+                    aria-label="Message input"
+                    className="max-h-40 min-h-[60px] w-full resize-y bg-transparent px-3 py-2 pr-14 text-[14px] leading-6 text-white outline-none placeholder:text-white/30 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
-                  <div className="absolute bottom-2.5 right-2.5">
+                  <div className="flex items-center justify-between px-2 pb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="hidden text-[10px] text-white/25 sm:inline">
+                        Shift + Enter for a new line
+                      </span>
+                    </div>
 
                     <button
                       type="submit"
-                      disabled={
-                        !chatInput.trim() ||
-                        isSearching
-                      }
-                      className="
-                        flex h-10 w-10
-                        items-center justify-center
-                        rounded-xl
-                        bg-white
-                        text-black
-                        transition
-                        hover:bg-white/90
-                        disabled:cursor-not-allowed
-                        disabled:bg-white/[0.08]
-                        disabled:text-white/20
-                      "
+                      disabled={!chatInput.trim() || isSearching}
+                      aria-label="Send message"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-300 to-emerald-400 text-[#05251f] shadow-lg shadow-teal-950/20 transition duration-200 hover:scale-[1.03] hover:shadow-teal-500/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:grayscale"
                     >
-
                       {isSearching ? (
-
                         <LoaderCircle
                           size={18}
                           className="animate-spin"
                         />
-
                       ) : (
-
                         <ArrowUp
-                          size={18}
+                          size={19}
                           strokeWidth={2.5}
                         />
-
                       )}
-
                     </button>
-
                   </div>
-
                 </form>
 
-                <p className="mt-2 text-center text-[11px] text-white/20">
-                  Perplexity can make mistakes. Check important information.
+                <p className="mt-3 text-center text-[10px] leading-5 text-white/25">
+                  AI can make mistakes. Verify important information.
                 </p>
-
               </div>
-
             </div>
-
           </div>
-
         </section>
-
       </div>
     </main>
   );
